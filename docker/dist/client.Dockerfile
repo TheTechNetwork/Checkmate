@@ -1,14 +1,12 @@
 ###############  builder  ###############
 FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 
-# Memory tweak for large bundles
+# Allow bigger JS heaps during bundling
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-# Tell Rollup to skip its optional native add-on (avoids missing arm64 binary)
-ENV ROLLUP_NO_BINARY=true
 
 WORKDIR /app
 
-# Build-time packages
+# Tools needed to compile native add-ons
 RUN apk add --no-cache \
     python3 \
     make g++ \
@@ -18,21 +16,21 @@ RUN apk add --no-cache \
     libusb-dev \
     eudev-dev
 
-# Install exact deps without optional native binaries
+# ----- install deps -----
 COPY ./client/package*.json ./
-RUN npm ci --omit=optional          # reproducible & smaller than plain `npm install`
+RUN npm ci
 
-# Build the client
+# ----- compile Rollup's native binding for musl + current arch -----
+RUN npm rebuild @rollup/rollup --build-from-source
+
+# ----- build the client -----
 COPY ./client .
 RUN npm run build
 
 ###############  runtime  ###############
 FROM nginx:1.27.1-alpine
 
-# Nginx config
 COPY ./docker/dist/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
-
-# Statically built assets
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY --from=build /app/env.sh /docker-entrypoint.d/env.sh
 RUN chmod +x /docker-entrypoint.d/env.sh
