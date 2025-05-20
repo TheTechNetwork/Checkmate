@@ -21,10 +21,10 @@ jobs:
       - name: Build Server Docker image
         run: |
           docker build \
-            -t ghcr.io/bluewave-labs/checkmate:backend-dist-mono \
+            -t ghcr.io/thetechnetwork/checkmate:backend-dist-mono \
             -f ./docker/dist-mono/server.Dockerfile \
-            --label org.opencontainers.image.source=https://github.com/bluewave-labs/checkmate \
+            --label org.opencontainers.image.source=https://github.com/thetechnetwork/checkmate \
             .
 
       - name: Push Server Docker image
-        run: docker push ghcr.io/bluewave-labs/checkmate:backend-dist-mono
+        run: docker push ghcr.io/thetechnetwork/checkmate:backend-dist-mono
