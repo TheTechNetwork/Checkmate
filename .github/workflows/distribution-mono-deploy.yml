@@ -4,27 +4,41 @@ on:
   push:
     branches: ["master"]
   workflow_dispatch:
+
 jobs:
   docker-build-and-push-server:
     runs-on: ubuntu-latest
+
     steps:
+      # 1 ─── Check out code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      # 2 ─── Enable QEMU for cross-platform builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 3 ─── Install Buildx (buildctl-based builder)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 4 ─── Log in to GitHub Container Registry (GHCR)
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Server Docker image
-        run: |
-          docker build \
-            -t ghcr.io/thetechnetwork/checkmate:backend-dist-mono \
-            -f ./docker/dist-mono/server.Dockerfile \
-            --label org.opencontainers.image.source=https://github.com/thetechnetwork/checkmate \
-            .
-
-      - name: Push Server Docker image
-        run: docker push ghcr.io/thetechnetwork/checkmate:backend-dist-mono
+      # 5 ─── Build *and* push the image for amd64 + arm64
+      - name: Build & push backend (monolithic)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/dist-mono/server.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/thetechnetwork/checkmate:backend-dist-mono
+          labels: |
+            org.opencontainers.image.source=https://github.com/thetechnetwork/checkmate
